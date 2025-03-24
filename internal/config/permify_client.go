@@ -12,16 +12,19 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-var PermifyClient *permify.Client
-var SchemaVersion string
-var SnapToken string
+//todo: permify - система управления доступом на основе атрибутов
+//todo: файл отвечает за работу с permify, его инициализацию запись схемы доступа и синхронизации
+
+var PermifyClient *permify.Client //todo: клиент для взаимодействия с permify
+var SchemaVersion string          //todo:версия схемы для записи в permify
+var SnapToken string              //todo: токен синхронизации данных в permify
 
 func InitPermifyClient() {
 	client, err := permify.NewClient(
 		permify.Config{
-			Endpoint: "localhost:3478",
+			Endpoint: "localhost:3478", //todo: указывает адрес и порт сервера permify
 		},
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithTransportCredentials(insecure.NewCredentials()), //отключение шифрования
 	)
 	if err != nil {
 		log.Fatalf("Failed to initialize Permify client: %v", err)
@@ -33,35 +36,30 @@ func InitPermifyClient() {
 
 func WritePermifySchema() {
 	// Write schema
+	//todo: определение схем сущностей, определение между ними отношений и определяет к ним разрешения
 	schema := `
-		entity user {}
+    entity user {}
 
-		entity document {
-			relation owner @user
-			attribute classification string
-			attribute department string
-				
-			permission view = is_public(classification) or (is_internal(classification) and in_same_department(department, request.dept)) or (is_confidential(classification) and owner)
-			permission edit = owner or (is_internal(classification) and in_same_department(department, request.dept))
-			permission delete = owner
-		}
+    entity department {
+        relation member @user
+    }
 
-		rule is_public(classification string) {
-			classification == 'public'
-		}
+    entity classification {
+        relation public @user
+        relation internal @user
+        relation confidential @user
+    }
 
-		rule is_internal(classification string) {
-			classification == 'internal'
-		}
-
-		rule is_confidential(classification string) {
-			classification == 'confidential'
-		}
-
-		rule in_same_department(department string, dept string) {
-			department == dept
-		}
-  `
+    entity document {
+        relation owner @user
+        relation department @department
+        relation classification @classification
+             
+        permission view = owner or (classification.internal and department.member) or classification.public
+        permission edit = owner or (classification.internal and department.member)
+        permission delete = owner
+    }
+`
 
 	sr, err := PermifyClient.Schema.Write(context.Background(), &v1.SchemaWriteRequest{
 		TenantId: "t1",
@@ -76,13 +74,15 @@ func WritePermifySchema() {
 	log.Printf("Schema version %s written successfully", SchemaVersion)
 }
 
+// todo; синхронизация локальной БД и permify
 func SyncPermify() {
 	// Read current relationships from Permify
 	rr, err := PermifyClient.Data.ReadRelationships(context.Background(), &v1.RelationshipReadRequest{
 		TenantId: "t1",
 		Metadata: &v1.RelationshipReadRequestMetadata{
-			SnapToken: SnapToken,
+			SnapToken: SnapToken, //токен синхронизации состояния данных
 		},
+		//todo: ограничивает выборку сущностями типов document и user
 		Filter: &v1.TupleFilter{
 			Entity: &v1.EntityFilter{
 				Type: "document",
@@ -100,7 +100,7 @@ func SyncPermify() {
 	// Map of existing document IDs in Permify
 	existingDocumentIDs := make([]string, 0)
 	nonExistingDocumentIDs := make([]string, 0)
-
+	//todo: проверка сущестсвования документов в локальной БД
 	for _, tuple := range rr.Tuples {
 		if tuple.Entity.Type == "document" {
 			_, err := models.GetDocumentByID(tuple.Entity.Id)
@@ -114,6 +114,7 @@ func SyncPermify() {
 	}
 
 	// Delete documents that don't exist in the database
+	//todo: удаление документов, которые отсутствуют в БД
 	if len(nonExistingDocumentIDs) > 0 {
 		rr, err := PermifyClient.Data.Delete(context.Background(), &v1.DataDeleteRequest{
 			TenantId: "t1",
@@ -136,6 +137,7 @@ func SyncPermify() {
 			log.Fatalf("Failed to delete orphaned documents from Permify: %v", err)
 		}
 
+		//todo: обновляет токен после удаления
 		SnapToken = rr.SnapToken
 		log.Printf("Orphaned documents deleted from Permify successfully\nSnap token: %s", SnapToken)
 
@@ -144,6 +146,7 @@ func SyncPermify() {
 	}
 
 	// Add missing documents to Permify
+	//todo: добавляет отсутствующие документы в Permify, создавая им атрибуты и отношения
 	var tuples []*v1.Tuple
 	var attributes []*v1.Attribute
 
@@ -211,3 +214,5 @@ func SyncPermify() {
 
 	log.Println("Permify synced successfully")
 }
+
+//todo: резюмируя, файл инициализирует permify, записывает схему доступа, осуществляет синхронизацию данных

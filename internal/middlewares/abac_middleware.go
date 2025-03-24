@@ -14,9 +14,11 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
+// todo: функция проверки прав пользователя
 func ABACMiddleware(permission string) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			//todo: получение информации о пользователе
 			claims := r.Context().Value(controllers.UserKey).(*models.Claims)
 			username := claims.Username
 			user, err := models.GetUserByUsername(username)
@@ -27,10 +29,12 @@ func ABACMiddleware(permission string) mux.MiddlewareFunc {
 				return
 			}
 
+			//todo: получение id документа из параметров запроса
 			vars := mux.Vars(r)
 			documentID := vars["id"]
 
 			// check if document exists
+			//todo: проверка документа на существование
 			_, docErr := models.GetDocumentByID(documentID)
 
 			if docErr != nil {
@@ -39,6 +43,7 @@ func ABACMiddleware(permission string) mux.MiddlewareFunc {
 				return
 			}
 
+			//todo: подготовка контекста для проверки прав доступа с передачей отдела пользователя
 			data := map[string]interface{}{
 				"dept": user.Department,
 			}
@@ -50,31 +55,33 @@ func ABACMiddleware(permission string) mux.MiddlewareFunc {
 			}
 
 			cr, err := config.PermifyClient.Permission.Check(context.Background(), &v1.PermissionCheckRequest{
-				TenantId: "t1",
+				TenantId: "t1", //todo: идентификатор арендатора
 				Metadata: &v1.PermissionCheckRequestMetadata{
-					SnapToken: config.SnapToken,
+					SnapToken: config.SnapToken, //todo: токен синхронизации данных
 					Depth:     50,
 				},
-				Entity: &v1.Entity{
+				Entity: &v1.Entity{ //todo: сущность, для которой проверяются права (в этом случае document)
 					Type: "document",
 					Id:   documentID,
 				},
-				Permission: permission,
+				Permission: permission, //todo: права, которые необходимо проверить
 				Subject: &v1.Subject{
 					Type: "user",
 					Id:   user.ID,
 				},
-				Context: &v1.Context{
+				Context: &v1.Context{ //todo: контекст (пример: отдел пользователя)
 					Data: structData,
 				},
 			})
 
+			//todo: обработка результатов запроса
 			if err != nil {
 				log.Printf("Failed to check permission: %v", err)
 				http.Error(w, "Forbidden", http.StatusForbidden)
 				return
 			}
 
+			//todo: при разрешении доступа к ресурсу передаёт управление следующему обработчику
 			if cr.Can == v1.CheckResult_CHECK_RESULT_ALLOWED {
 				next.ServeHTTP(w, r)
 				return

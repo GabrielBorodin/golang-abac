@@ -7,6 +7,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
+// todo: преобразует строку в protobuf-тип Any
 func ConvertStringToAny(s string) *anypb.Any {
 	anyValue, err := anypb.New(&v1.StringValue{Data: s})
 	if err != nil {
@@ -15,6 +16,7 @@ func ConvertStringToAny(s string) *anypb.Any {
 	return anyValue
 }
 
+// todo: проверка, содержится ли строка в массиве строк
 func ContainsString(arr []string, value string) bool {
 	for _, v := range arr {
 		if v == value {

@@ -2,6 +2,7 @@ package models
 
 import "errors"
 
+// todo: интерфейс пользователя с ролями
 type User struct {
 	ID         string `json:"id"`
 	Username   string `json:"username"`
@@ -10,6 +11,7 @@ type User struct {
 	Department string `json:"department"`
 }
 
+// todo: имитация БД
 var Users = []User{
 	{ID: "1", Username: "admin", Password: "adminpassword", Role: "admin", Department: "IT"},
 	{ID: "2", Username: "hrmanager", Password: "hrpassword", Role: "manager", Department: "HR"},

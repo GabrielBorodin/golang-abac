@@ -2,6 +2,7 @@ package models
 
 import "errors"
 
+// todo: 'Интерфейс' документов
 type Document struct {
 	ID             string `json:"id"`
 	Title          string `json:"title"`
@@ -10,6 +11,7 @@ type Document struct {
 	OwnerID        string `json:"owner_id"`
 }
 
+// todo: имитация БД документов
 var Documents = []Document{
 	{ID: "1", Title: "Document 1", Content: "This is document 1", Classification: "public", OwnerID: "1"},
 	{ID: "2", Title: "Document 2", Content: "This is document 2", Classification: "internal", OwnerID: "2"},
@@ -17,10 +19,12 @@ var Documents = []Document{
 	{ID: "4", Title: "Document 4", Content: "This is document 4", Classification: "internal", OwnerID: "4"},
 }
 
+// todo: добавление документа
 func AddDocument(doc Document) {
 	Documents = append(Documents, doc)
 }
 
+// todo: получение документа по ID
 func GetDocumentByID(id string) (Document, error) {
 	for _, doc := range Documents {
 		if doc.ID == id {
@@ -30,6 +34,7 @@ func GetDocumentByID(id string) (Document, error) {
 	return Document{}, errors.New("Document not found")
 }
 
+// todo: Обновление данных о документе
 func UpdateDocument(updatedDoc Document) {
 	for i, doc := range Documents {
 		if doc.ID == updatedDoc.ID {
@@ -39,6 +44,7 @@ func UpdateDocument(updatedDoc Document) {
 	}
 }
 
+// todo: удаление документа
 func DeleteDocument(id string) {
 	for i, doc := range Documents {
 		if doc.ID == id {
